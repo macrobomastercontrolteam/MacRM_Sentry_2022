@@ -1,9 +1,10 @@
 --cpu=Cortex-M4.fp.sp
 "ultrasonic_sensor\startup_stm32f427xx.o"
 "ultrasonic_sensor\main.o"
+"ultrasonic_sensor\gpio.o"
+"ultrasonic_sensor\tim.o"
 "ultrasonic_sensor\stm32f4xx_it.o"
 "ultrasonic_sensor\stm32f4xx_hal_msp.o"
-"ultrasonic_sensor\stm32f4xx_hal_timebase_tim.o"
 "ultrasonic_sensor\stm32f4xx_hal_tim.o"
 "ultrasonic_sensor\stm32f4xx_hal_tim_ex.o"
 "ultrasonic_sensor\stm32f4xx_hal_rcc.o"

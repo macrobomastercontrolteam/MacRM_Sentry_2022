@@ -30,3 +30,5 @@ ultrasonic_sensor\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.
 ultrasonic_sensor\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h
 ultrasonic_sensor\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h
 ultrasonic_sensor\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h
+ultrasonic_sensor\main.o: ../Inc/tim.h
+ultrasonic_sensor\main.o: ../Inc/gpio.h
