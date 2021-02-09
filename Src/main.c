@@ -34,7 +34,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define led(x) (LEDx_GPIO_Port,LEDx_Pin)
+#define LEDROW(x) HAL_GPIO_WritePin(LED##x##_GPIO_Port, LED##x##_Pin, GPIO_PIN_RESET)
+#define LEDROW_WRAP(x) LEDROW(x)
+#define LEDROWSTOP(x) HAL_GPIO_WritePin(LED##x##_GPIO_Port, LED##x##_Pin, GPIO_PIN_SET)
+#define LEDROWSTOP_WRAP(x) LEDROWSTOP(x)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,7 +51,7 @@
 
 /***** Ultrasonic variables *****/
 uint8_t left_detect = 0;
-uint8_t right_detect= 0;
+uint8_t right_detect = 0;
 
 float left_sonic_threshold = 50;
 float right_sonic_threshold = 50;
@@ -64,6 +67,7 @@ void SystemClock_Config(void);
 void usDelay(uint32_t uSec);
 float ultrasonic_measure_left(void);
 float ultrasonic_measure_right(void);
+void ledrowoutput(float distance);
 void wiggle(void);
 /* USER CODE BEGIN PFP */
 
@@ -112,7 +116,8 @@ int main(void)
     while (1)
     {
         /* USER CODE END WHILE */
-        
+        ledrowoutput(ultrasonic_measure_left());
+        HAL_Delay(10);
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
@@ -226,8 +231,9 @@ float ultrasonic_measure_right(void)
         ;
     //3. Start measuring ECHO pulse width in usec
     uint32_t numTicks = 0;
-    while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_SET)
+    while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_SET && numTicks < 2100)
     {
+        // within 1 meter range
         numTicks++;
         usDelay(2);
     };
@@ -236,7 +242,100 @@ float ultrasonic_measure_right(void)
 }
 void wiggle(void)
 {
-	;
+    ;
+}
+
+// led output, test function
+void ledrowoutput(float distance)
+{
+    if (distance < 12.5f)
+    {
+        LEDROW_WRAP(1);
+        LEDROWSTOP_WRAP(2);
+        LEDROWSTOP_WRAP(3);
+        LEDROWSTOP_WRAP(4);
+        LEDROWSTOP_WRAP(5);
+        LEDROWSTOP_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 25.0f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROWSTOP_WRAP(3);
+        LEDROWSTOP_WRAP(4);
+        LEDROWSTOP_WRAP(5);
+        LEDROWSTOP_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 37.5f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROWSTOP_WRAP(4);
+        LEDROWSTOP_WRAP(5);
+        LEDROWSTOP_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 50.0f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROW_WRAP(4);
+        LEDROWSTOP_WRAP(5);
+        LEDROWSTOP_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 62.5f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROW_WRAP(4);
+        LEDROW_WRAP(5);
+        LEDROWSTOP_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 75.0f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROW_WRAP(4);
+        LEDROW_WRAP(5);
+        LEDROW_WRAP(6);
+        LEDROWSTOP_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else if (distance < 87.5f)
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROW_WRAP(4);
+        LEDROW_WRAP(5);
+        LEDROW_WRAP(6);
+        LEDROW_WRAP(7);
+        LEDROWSTOP_WRAP(8);
+    }
+    else
+    {
+        LEDROW_WRAP(1);
+        LEDROW_WRAP(2);
+        LEDROW_WRAP(3);
+        LEDROW_WRAP(4);
+        LEDROW_WRAP(5);
+        LEDROW_WRAP(6);
+        LEDROW_WRAP(7);
+        LEDROW_WRAP(8);
+    }
 }
 /* USER CODE END 4 */
 
