@@ -19,7 +19,9 @@
 - LED1-8: PG1-8
 
 ## Code Setup
-- TIM4 is used for usDelay (actually 2.8us for usDelay(2) as measured by oscilloscope)
+- usDelay
+    - us parameter must be within range of uint16_t (sugguest 1-65500)
+    - used TIM4 (prescaler=freq-1 (in MHz), ARR=0xffff-1)
 - wiggle() -> wiggle around a wiggling center point
 
 ## State Machine

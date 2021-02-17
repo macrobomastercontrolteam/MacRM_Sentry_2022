@@ -34,15 +34,62 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LEDROW(x) HAL_GPIO_WritePin(LED##x##_GPIO_Port, LED##x##_Pin, GPIO_PIN_RESET)
-#define LEDROW_WRAP(x) LEDROW(x)
-#define LEDROWSTOP(x) HAL_GPIO_WritePin(LED##x##_GPIO_Port, LED##x##_Pin, GPIO_PIN_SET)
-#define LEDROWSTOP_WRAP(x) LEDROWSTOP(x)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define usDelay(uSec)                                                          \
+    do                                                                         \
+    {                                                                          \
+        __HAL_TIM_SET_COUNTER(&htim4, 0); /* set the counter value a 0*/       \
+        while (__HAL_TIM_GET_COUNTER(&htim4) < uSec)                           \
+            ; /* wait for the counter to reach the us input in the parameter*/ \
+    } while (0U)
+#define ULTRASONIC_MEASURE_RIGHT()                                                              \
+    do                                                                                          \
+    {                                                                                           \
+        /* START Ultrasonic measure routine */                                                  \
+        numTicks = 0;                                                                           \
+        HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_RESET);                          \
+        usDelay(3);                                                                             \
+        /*1. Output 10 usec TRIG (actually 14us)*/                                              \
+        HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_SET);                            \
+        usDelay(10);                                                                            \
+        HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_RESET);                          \
+        /*2. Wait for ECHO pin rising edge*/                                                    \
+        while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_RESET)                  \
+            ;                                                                                   \
+        /*3. Start measuring ECHO pulse width in usec*/                                         \
+        while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_SET && numTicks < 2100) \
+        { /* within 1 meter range*/                                                             \
+            numTicks++;                                                                         \
+            usDelay(2);                                                                         \
+        };                                                                                      \
+        distance_right = (numTicks + 0.0f) * 2.8f * speedOfSound; /* centimeter*/               \
+    } while (0U)
+#define ULTRASONIC_MEASURE_LEFT()                                                               \
+    do                                                                                          \
+    {                                                                                           \
+        /* START Ultrasonic measure routine */                                                  \
+        numTicks = 0;                                                                           \
+        HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_RESET);                          \
+        usDelay(3);                                                                             \
+        /*1. Output 10 usec TRIG (actually 14us)*/                                              \
+        HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_SET);                            \
+        usDelay(10);                                                                            \
+        HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_RESET);                          \
+        /*2. Wait for ECHO pin rising edge*/                                                    \
+        while (HAL_GPIO_ReadPin(ECHO1_GPIO_Port, ECHO1_Pin) == GPIO_PIN_RESET)                  \
+            ;                                                                                   \
+        /*3. Start measuring ECHO pulse width in usec*/                                         \
+        while (HAL_GPIO_ReadPin(ECHO1_GPIO_Port, ECHO1_Pin) == GPIO_PIN_SET && numTicks < 2100) \
+        { /* within 1 meter range*/                                                             \
+            numTicks++;                                                                         \
+            usDelay(2);                                                                         \
+        };                                                                                      \
+        distance_left = (numTicks + 0.0f) * 2.8f * speedOfSound; /* centimeter*/                \
+    } while (0U)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -59,14 +106,12 @@ float right_sonic_threshold = 50;
 const float speedOfSound = 0.0343 / 2;
 float distance_left;
 float distance_right;
+uint32_t numTicks = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void usDelay(uint32_t uSec);
-float ultrasonic_measure_left(void);
-float ultrasonic_measure_right(void);
 void ledrowoutput(float distance);
 void wiggle(void);
 /* USER CODE BEGIN PFP */
@@ -108,7 +153,7 @@ int main(void)
     MX_GPIO_Init();
     MX_TIM4_Init();
     /* USER CODE BEGIN 2 */
-
+    HAL_TIM_Base_Start(&htim4);
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -116,8 +161,13 @@ int main(void)
     while (1)
     {
         /* USER CODE END WHILE */
-        ledrowoutput(ultrasonic_measure_left());
-        HAL_Delay(10);
+        // ULTRASONIC_MEASURE_LEFT();
+        // ledrowoutput(distance_left);
+        // ULTRASONIC_MEASURE_RIGHT();
+        // ledrowoutput(distance_right);
+        HAL_GPIO_TogglePin(TEST_GPIO_Port, TEST_Pin);
+        usDelay(2);
+        // HAL_Delay(10);
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
@@ -167,79 +217,6 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void usDelay(uint32_t uSec)
-{
-    // usDelay(2) actually delay 2.8us as measured by oscilloscope
-    if (uSec < 2)
-        uSec = 2;
-    TIM4->ARR = uSec - 1; /*sets the value in the auto-reload register*/
-    TIM4->EGR = 1;        /*Re-initialises the timer*/
-    TIM4->SR &= ~1;       //Resets the flag
-    TIM4->CR1 |= 1;       //Enables the counter
-    while ((TIM4->SR & 0x0001) != 1)
-        ;
-    TIM4->SR &= ~(0x0001);
-    /*
-	Alternative method: need to change type of uSec to uint16_t and change ARR to 0xFFFF-1
-   https://controllerstech.com/create-1-microsecond-delay-stm32/
-	Test code:
-	while (1)
-  {
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
-	  delay_us(10);
-  }
-*/
-    //	__HAL_TIM_SET_COUNTER(&htim4,0);  // set the counter value a 0
-    //	while (__HAL_TIM_GET_COUNTER(&htim4) < uSec);  // wait for the counter to reach the us input in the parameter
-}
-
-float ultrasonic_measure_left(void)
-{
-    HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_RESET);
-    usDelay(3);
-    //*** START Ultrasonic measure routine ***//
-    //1. Output 10 usec TRIG (actually 14us)
-    HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_SET);
-    usDelay(10);
-    HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_RESET);
-
-    //2. Wait for ECHO pin rising edge
-    while (HAL_GPIO_ReadPin(ECHO1_GPIO_Port, ECHO1_Pin) == GPIO_PIN_RESET)
-        ;
-    //3. Start measuring ECHO pulse width in usec
-    uint32_t numTicks = 0;
-    while (HAL_GPIO_ReadPin(ECHO1_GPIO_Port, ECHO1_Pin) == GPIO_PIN_SET)
-    {
-        numTicks++;
-        usDelay(2);
-    };
-    return (numTicks + 0.0f) * 2.8f * speedOfSound; // centimeter
-    //    numTicks = 0;
-}
-float ultrasonic_measure_right(void)
-{
-    HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_RESET);
-    usDelay(3);
-    //*** START Ultrasonic measure routine ***//
-    //1. Output 10 usec TRIG (actually 14us)
-    HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_SET);
-    usDelay(10);
-    HAL_GPIO_WritePin(TRIG2_GPIO_Port, TRIG2_Pin, GPIO_PIN_RESET);
-
-    //2. Wait for ECHO pin rising edge
-    while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_RESET)
-        ;
-    //3. Start measuring ECHO pulse width in usec
-    uint32_t numTicks = 0;
-    while (HAL_GPIO_ReadPin(ECHO2_GPIO_Port, ECHO2_Pin) == GPIO_PIN_SET && numTicks < 2100)
-    {
-        // within 1 meter range
-        numTicks++;
-        usDelay(2);
-    };
-    return (numTicks + 0.0f) * 2.8f * speedOfSound; // centimeter
-    //    numTicks = 0;
-}
 void wiggle(void)
 {
     ;
@@ -250,91 +227,91 @@ void ledrowoutput(float distance)
 {
     if (distance < 12.5f)
     {
-        LEDROW_WRAP(1);
-        LEDROWSTOP_WRAP(2);
-        LEDROWSTOP_WRAP(3);
-        LEDROWSTOP_WRAP(4);
-        LEDROWSTOP_WRAP(5);
-        LEDROWSTOP_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 25.0f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROWSTOP_WRAP(3);
-        LEDROWSTOP_WRAP(4);
-        LEDROWSTOP_WRAP(5);
-        LEDROWSTOP_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 37.5f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROWSTOP_WRAP(4);
-        LEDROWSTOP_WRAP(5);
-        LEDROWSTOP_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 50.0f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROW_WRAP(4);
-        LEDROWSTOP_WRAP(5);
-        LEDROWSTOP_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 62.5f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROW_WRAP(4);
-        LEDROW_WRAP(5);
-        LEDROWSTOP_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 75.0f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROW_WRAP(4);
-        LEDROW_WRAP(5);
-        LEDROW_WRAP(6);
-        LEDROWSTOP_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else if (distance < 87.5f)
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROW_WRAP(4);
-        LEDROW_WRAP(5);
-        LEDROW_WRAP(6);
-        LEDROW_WRAP(7);
-        LEDROWSTOP_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_SET);
     }
     else
     {
-        LEDROW_WRAP(1);
-        LEDROW_WRAP(2);
-        LEDROW_WRAP(3);
-        LEDROW_WRAP(4);
-        LEDROW_WRAP(5);
-        LEDROW_WRAP(6);
-        LEDROW_WRAP(7);
-        LEDROW_WRAP(8);
+        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED7_GPIO_Port, LED7_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED8_GPIO_Port, LED8_Pin, GPIO_PIN_RESET);
     }
 }
 /* USER CODE END 4 */
