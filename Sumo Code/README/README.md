@@ -7,17 +7,26 @@
 - 上下两个C板：上面C板控制左右运动马达，下面控制云台+拨弹轮  
 - 云台与Chassis用GM6020连接
 
-## General Algorithm
-1. Ultrasonic measure twice at the start of each while loop
+## States
+- State 0 (normal mode): go left + wiggle randomly for three times around one center point
+- State 1 (normal mode): go right + wiggle randomly for three times around one center point
+- State 2 (attack mode): go left + wiggle twice
+- State 3 (attack mode): go right + wiggle twice  
+    Each time at the end of all states check ENEMY_DETECT to enter either attack mode or normal mode
+
+## Algorithm
+- Ultrasonic measure twice at the start of each while loop
     1. If both sides are blocked, move towards the middle point and redo measuring
     2. if only one side blocked, go to state 0/1/2/3
+- Wiggle  
+    Take state 0 (to the left) for example
 
-## State Machine
-- State 0: go left and wiggle randomly for three times around one center point
-- State 1: go right and wiggle randomly for three times around one center point
-- State 2: go left + enemy attack mode (wiggle twice)
-- State 3: go right + enemy attack mode (wiggle twice)  
-    At the end of all states check ENEMY_DETECT whether enter attack mode or enter normal mode (State 0 & 1)
+    <img src="Wiggle%20schematic.jpg" alt="Wiggle schematic" width="35%"/>
+    
+    - Time x<sub>pos</sub> and x<sub>2</sub> are randomly generated, while x<sub>1</sub>=x<sub>pos</sub>/8+100 (this requires x<sub>pos</sub>>114) and last return time is 0.8x<sub>2</sub>
+    - full_travel_tick is the max time for a one-way travel in wheel_speed_medium.  
+    - In attack states (2 & 3), full_travel is halved and wiggling is executed twice in a one-way travel
+    - It's possible that the wiggle state is terminated half-way through because of wrong ultrasonic detection.
 
 ## Pin setup
 - Test LED Code
@@ -35,7 +44,7 @@
     The attack mode could work with computer vision and ballastics to avoid bullets in the future
 - int8_t left_speed_sign
 - Motor variables
-- wiggle_tick
+- wiggle_tick and full_travel_tick
 - random_list
 
 ## Functions
