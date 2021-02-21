@@ -2,45 +2,46 @@
 ### by MacRobomaster 2020 Control Team
 
 ## System Notes
-- 暂时用A板测试
+- 暂时用A板
+- 左右移动只用一个M3508马达
 - 上下两个C板：上面C板控制左右运动马达，下面控制云台+拨弹轮  
-- 上下拨弹轮同步
 - 云台与Chassis用GM6020连接
-- 左右移动用一个M3508马达
 
 ## General Algorithm
-1. memorize the previous location (in less frequency)  
-2. if both sensors offline, use the last location  
-3. If both sensors outputs too short distances, determine how to move using the previous location and measure by the sensors again  
-4. if one of the sensors doesn't work, determine using the other sensor and the previous location  
+1. Ultrasonic measure twice at the start of each while loop
+    1. If both sides are blocked, move towards the middle point and redo measuring
+    2. if only one side blocked, go to state 0/1/2/3
+
+## State Machine
+- State 0: go left and wiggle randomly for three times around one center point
+- State 1: go right and wiggle randomly for three times around one center point
+- State 2: go left + enemy attack mode (wiggle twice)
+- State 3: go right + enemy attack mode (wiggle twice)  
+    At the end of all states check ENEMY_DETECT whether enter attack mode or enter normal mode (State 0 & 1)
 
 ## Pin setup
-- Test
+- Test LED Code
     - Echo & Trig 1 (left):   PF0 & PF1  
     - Echo & Trig 2 (right):  PI9 & PF10  
 - Modified Sumo Code
     - Echo & Trig 1 (left):   PA4 & PFA5
     - Echo & Trig 2 (right):  PC1 & PC5  
-
 - LED_o 1-8: PG1-8
 - LED_RED_o & LED_GREEN_o: PE11 & PF14
 - KEY: reset button (PB2)
 
-## Code Setup
+## Things to be modified
+- ENEMY_DETECT - determined from other modules; start attack mode  
+    The attack mode could work with computer vision and ballastics to avoid bullets in the future
+- int8_t left_speed_sign
+- Motor variables
+- wiggle_tick
+- random_list
+
+## Functions
 - usDelay
     - time (us) parameter must be within range of uint16_t (sugguestion: 1-65500)
-    - used TIM4 (prescaler=freq-1 (in MHz), ARR=0xffff-1)
-
-## State Machine
-- State 0: going left
-- State 1: going right
-- State 2: wiggle if enemy detected
-
-## Parameters to be determined
-- enemy_detect - need to be read from the computer vision module
-- int8_t left_speed_sign
-- Motor parameters
-- wiggle_tick generation parameters
+    - used TIM4 (prescaler=APB1_freq-1 (in MHz), ARR=0xffff-1)
 
 ## Test Code Removal Procedure
 - DMA, USART 不知道有没有用就暂时保留

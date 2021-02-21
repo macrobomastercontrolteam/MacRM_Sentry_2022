@@ -53,6 +53,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define ENEMY_DETECT 0
 #define usDelay(uSec)                                                          \
     do                                                                         \
     {                                                                          \
@@ -116,24 +117,15 @@ static int key_sta = 0;
 int speed_step_sign = +1;
 
 uint32_t counter = 0;
-uint32_t counter1 = 0;
-uint32_t counter2 = 0;
-//uint16_t sonic = 1;
+
 uint16_t TIM_COUNT[2];
 
 /***** State Machine Variables *****/
 uint8_t state = 0;
-
 uint8_t state0_d = 0;
 uint8_t state1_d = 0;
 uint8_t state2_d = 0;
 uint8_t state3_d = 0;
-uint8_t state4_d = 0;
-uint8_t state5_d = 0;
-uint8_t state6_d = 0;
-uint8_t state7_d = 0;
-uint8_t state8_d = 0;
-uint8_t state9_d = 0;
 
 /***** Ultrasonic variables *****/
 #define LEFT_SONIC_THRESHOLD 20.0f // in cm
@@ -157,10 +149,13 @@ const int32_t wheel_speed_slow = 2000;
 const int32_t wheel_speed_fast = 8000;
 const int32_t wheel_speed_medium = 4000;
 
-const uint32_t full_travel_tick = 5000; // time to go from one side of the wall to the other side in wheel_speed_medium
+// max time to move with wheel_speed_medium; total distance is 3823mm
+const uint32_t full_travel_tick = 5000;
+uint32_t full_travel_tick_m = full_travel_tick; // modified if enemy detected
+
 const uint32_t random_list[] = {5, 4, 7, 6, 3, 6, 2, 4, 3};
 uint8_t random_index = 0;
-uint32_t wiggle_tick_pos = full_travel_tick * random_list[random_index] / 10;
+uint32_t wiggle_tick_pos;
 uint32_t wiggle_tick_1;
 uint32_t wiggle_tick_2;
 uint32_t wiggle_tick_2_dur;
@@ -281,26 +276,37 @@ int main(void)
         {
             state = 0;
             state0_d = 0;
+            if (ENEMY_DETECT)
+                state = 2; // attack mode + go left
         }
         else if (left_detect_1 & left_detect)
         {
             state = 1;
             state1_d = 0;
+            if (ENEMY_DETECT)
+                state = 3; // attack mode + go right
         }
-
         // go left
-        if (state == 0)
+        if (state == 0 || state == 2)
         {
             if (state0_d == 0)
             {
                 motor_pid[0].target = left_speed_sign * wheel_speed_medium;
                 // setup absolute time in ticks
-                wiggle_tick_pos = full_travel_tick * random_list[random_index] / 10; // wiggle at time (random number * (full travel time)/10)
+                if (state == 0)
+                {
+                    full_travel_tick_m = full_travel_tick;
+                }
+                else
+                {
+                    full_travel_tick_m = full_travel_tick / 2; // divide the full distance into two halfs and wiggle twice
+                }
+                wiggle_tick_pos = full_travel_tick_m * random_list[random_index] / 10; // wiggle position
                 wiggle_tick_1 = wiggle_tick_pos + wiggle_tick_pos / 8 + 100;
-                wiggle_tick_2_dur = full_travel_tick * random_list[random_index + 1] / 80 + 100;
+                wiggle_tick_2_dur = full_travel_tick_m * random_list[random_index + 1] / 80 + 100;
                 wiggle_tick_2 = wiggle_tick_1 + wiggle_tick_2_dur;
-                wiggle_tick_3 = wiggle_tick_1 + wiggle_tick_2_dur * 9 / 5; // plus 0.8*wiggle_tick_2_dur
-                wiggle_tick_total = wiggle_tick_3 + (full_travel_tick - wiggle_tick_pos + (wiggle_tick_pos / 8 + 100 - wiggle_tick_2_dur / 5) * wheel_speed_slow / wheel_speed_medium);
+                wiggle_tick_3 = wiggle_tick_1 + wiggle_tick_2_dur * 9 / 5; // plus 0.8*wiggle_tick_2_duration
+                wiggle_tick_total = wiggle_tick_3 + (full_travel_tick_m - wiggle_tick_pos + (wiggle_tick_pos / 8 + 100 - wiggle_tick_2_dur / 5) * wheel_speed_slow / wheel_speed_medium) - 100;
                 if (random_index == 7)
                     random_index = 0;
                 else
@@ -330,23 +336,49 @@ int main(void)
                 else if (HAL_GetTick() - counter >= wiggle_tick_total)
                 {
                     state0_d = 0;
-                    state = 1; // go right
-                    state1_d = 0;
+                    if (state == 0)
+                    {
+                        state = ENEMY_DETECT ? 3 : 1;
+                        state1_d = 0;
+                        state3_d = 0;
+                    }
+                    else
+                    {
+                        if (state2_d == 0)
+                        {
+                            state2_d = 1; // wiggle two times because total distance is halved
+                        }
+                        else
+                        {
+                            state = ENEMY_DETECT ? 3 : 1;
+                            state1_d = 0;
+                            state2_d = 0;
+                            state3_d = 0;
+                        }
+                    }
                 }
             }
         }
-        else if (state == 1) // go right
+        else if (state == 1 || state == 3) // go right
         {
             if (state1_d == 0)
             {
+                if (state == 1)
+                {
+                    full_travel_tick_m = full_travel_tick;
+                }
+                else
+                {
+                    full_travel_tick_m = full_travel_tick / 2;
+                }
                 motor_pid[0].target = (-1) * left_speed_sign * wheel_speed_medium;
                 // setup absolute time in ticks
-                wiggle_tick_pos = full_travel_tick * random_list[random_index] / 10; // wiggle at time (random number * (full travel time)/10)
+                wiggle_tick_pos = full_travel_tick_m * random_list[random_index] / 10; // wiggle at time (random number * (full travel time)/10)
                 wiggle_tick_1 = wiggle_tick_pos + wiggle_tick_pos / 8 + 100;
-                wiggle_tick_2_dur = full_travel_tick * random_list[random_index + 1] / 80 + 100;
+                wiggle_tick_2_dur = full_travel_tick_m * random_list[random_index + 1] / 80 + 100;
                 wiggle_tick_2 = wiggle_tick_1 + wiggle_tick_2_dur;
                 wiggle_tick_3 = wiggle_tick_1 + wiggle_tick_2_dur * 9 / 5; // plus 0.8*wiggle_tick_2_dur
-                wiggle_tick_total = wiggle_tick_3 + (full_travel_tick - wiggle_tick_pos + (wiggle_tick_pos / 8 + 100 - wiggle_tick_2_dur / 5) * wheel_speed_slow / wheel_speed_medium);
+                wiggle_tick_total = wiggle_tick_3 + (full_travel_tick_m - wiggle_tick_pos + (wiggle_tick_pos / 8 + 100 - wiggle_tick_2_dur / 5) * wheel_speed_slow / wheel_speed_medium) - 100;
                 if (random_index == 7)
                     random_index = 0;
                 else
@@ -375,26 +407,32 @@ int main(void)
                 }
                 else if (HAL_GetTick() - counter >= wiggle_tick_total)
                 {
-                    state0_d = 0;
-                    state = 1; // go right
                     state1_d = 0;
+                    if (state == 1)
+                    {
+                        state = ENEMY_DETECT ? 2 : 0;
+                        state2_d = 0;
+                        state0_d = 0;
+                    }
+                    else
+                    {
+                        if (state3_d == 0)
+                        {
+                            state3_d = 1;
+                        }
+                        else
+                        {
+                            state = ENEMY_DETECT ? 2 : 0;
+                            state0_d = 0;
+                            state2_d = 0;
+                            state3_d = 0;
+                        }
+                    }
                 }
             }
         }
-        else if (state == 2) // enemy detected
-        {
-            if (state1_d == 0)
-            {
-                counter = HAL_GetTick();
-                state1_d = 1;
-            }
-            else if (state1_d == 1)
-            {
-                ;
-            }
-        }
         motor_pid[0].f_cal_pid(&motor_pid[0], moto_chassis[0].speed_rpm); //根据设定值进行PID计算。
-        // only 1 motor is used to move left & right, other 3 motors outputs are left as 0 here because I don't know how to change the bsp_can file, LOL
+        // only 1 motor is used, so set other 3 motors 0
         set_moto_current(&hcan1, motor_pid[0].output, 0, 0, 0); //将PID的计算结果通过CAN发送到电机
         HAL_Delay(10);                                          //PID控制频率100HZ
     }
