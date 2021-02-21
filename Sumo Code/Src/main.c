@@ -136,30 +136,30 @@ uint8_t state8_d = 0;
 uint8_t state9_d = 0;
 
 /***** Ultrasonic variables *****/
-#define LEFT_SONIC_THRESHOLD 50.0f
-#define RIGHT_SONIC_THRESHOLD 50.0f
+#define LEFT_SONIC_THRESHOLD 20.0f // in cm
+#define RIGHT_SONIC_THRESHOLD 20.0f
+const float speedOfSound = 0.0343 / 2;
 
+uint8_t left_detect_1 = 0; // first time
+uint8_t right_detect_1 = 0;
 uint8_t left_detect = 0;
 uint8_t right_detect = 0;
 
-const float speedOfSound = 0.0343 / 2;
-float distance_left = LEFT_SONIC_THRESHOLD + 1.0f; // in cm
-float distance_right = RIGHT_SONIC_THRESHOLD + 1.0f;
+float distance_left_1; // first time
+float distance_right_1;
+float distance_left;
+float distance_right;
 
 /****** Motor Variables ******/
-//left wheel - Motor[0] right wheel - Motor[1]
-int speed_sign = +1;
-//int right_speed_sign = -1;
+int8_t left_speed_sign = +1; // going right is -1
 int32_t wheel_speed_super_slow = 1600;
 int32_t wheel_speed_slow = 2000;
 int32_t wheel_speed_fast = 8000;
 int32_t wheel_speed_medium = 4000;
-int32_t wheel_speed_turn = 6000;
 
-uint32_t straight_tick = 2000;
-uint32_t fast_90_tick = 250;
-uint32_t medium_90_tick = 360;
-uint32_t slow_90_tick = 1000;
+uint32_t fast_wiggle_tick = 250;
+uint32_t medium_wiggle_tick = 360;
+uint32_t slow_wiggle_tick = 1000;
 
 #define SpeedStep 500
 
@@ -252,15 +252,34 @@ int main(void)
     /* USER CODE BEGIN WHILE */
     while (1)
     {
-        if (counter1 % 3 == 0)
-        { /********* Ultrasonic detect every 30 ms ********/
-            ;
+        /********* Ultrasonic detect every 20 ms ********/
+        ULTRASONIC_MEASURE_LEFT();
+        ULTRASONIC_MEASURE_RIGHT();
+        distance_left_1 = distance_left;
+        distance_right_1 = distance_right;
+        left_detect_1 = distance_left_1 < LEFT_SONIC_THRESHOLD ? 1 : 0;
+        right_detect_1 = distance_right_1 < LEFT_SONIC_THRESHOLD ? 1 : 0;
+        ULTRASONIC_MEASURE_LEFT();
+        ULTRASONIC_MEASURE_RIGHT();
+        left_detect = distance_left < LEFT_SONIC_THRESHOLD ? 1 : 0;
+        right_detect = distance_right < LEFT_SONIC_THRESHOLD ? 1 : 0;
+        if (left_detect_1 & left_detect & right_detect_1 & right_detect)
+        {
+            continue;
         }
+        else
+        {
+            // if right detected two times, go left (state=0), otherwise state is not changed, same applies to left_detect
+            state = state && !(right_detect_1 & right_detect) || (left_detect_1 & left_detect);
+        }
+
+        // going left
         if (state == 0)
         {
             if (state0_d == 0)
             {
                 counter = HAL_GetTick();
+                motor_pid[0].target = left_speed_sign * wheel_speed_slow;
                 state0_d = 1;
             }
             else if (state0_d == 1)

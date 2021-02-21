@@ -6,6 +6,7 @@
 - 上下两个C板：上面C板控制左右运动马达，下面控制云台+拨弹轮  
 - 上下拨弹轮synchronize 
 - 云台与Chassis用GM6020连接
+- 左右移动暂定一个马达M3508
 
 ## General Algorithm
 1. memorize the previous location (in less frequency)  
