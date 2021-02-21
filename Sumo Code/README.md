@@ -2,11 +2,11 @@
 ### by MacRobomaster 2020 Control Team
 
 ## System Notes
-- This code is used on development board A for test reasons
+- 暂时用A板测试
 - 上下两个C板：上面C板控制左右运动马达，下面控制云台+拨弹轮  
-- 上下拨弹轮synchronize 
+- 上下拨弹轮同步
 - 云台与Chassis用GM6020连接
-- 左右移动暂定一个马达M3508
+- 左右移动用一个M3508马达
 
 ## General Algorithm
 1. memorize the previous location (in less frequency)  
@@ -30,16 +30,17 @@
 - usDelay
     - time (us) parameter must be within range of uint16_t (sugguestion: 1-65500)
     - used TIM4 (prescaler=freq-1 (in MHz), ARR=0xffff-1)
-- wiggle() -> wiggle around a wiggling center point
 
 ## State Machine
-- State 0: going left and wiggle
-- State 1: going right and wiggle
+- State 0: going left
+- State 1: going right
+- State 2: wiggle if enemy detected
 
 ## Parameters to be determined
-- int speed_sign
-- Sound Speed  
-- Motor speed  
+- enemy_detect - need to be read from the computer vision module
+- int8_t left_speed_sign
+- Motor parameters
+- wiggle_tick generation parameters
 
 ## Test Code Removal Procedure
 - DMA, USART 不知道有没有用就暂时保留
