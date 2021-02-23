@@ -24,7 +24,7 @@
 - Wiggle  
     Take state 0 (to the left) for example
 
-    <img src="Wiggle%20schematic.jpg" alt="Wiggle schematic" width="35%"/>
+    <img src="doc/Wiggle%20schematic.jpg" alt="Wiggle schematic" width="35%"/>
     
     - Time x<sub>pos</sub> and x<sub>2</sub> are randomly generated, while x<sub>1</sub>=x<sub>pos</sub>/8+100 (this requires x<sub>pos</sub>>114) and last return time is 0.8x<sub>2</sub>
     - full_travel_tick is the max time for a one-way travel in wheel_speed_medium.  
