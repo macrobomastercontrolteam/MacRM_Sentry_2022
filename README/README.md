@@ -1,5 +1,8 @@
 # Sentry Ultrasonic Sensor Module
 ### by MacRobomaster 2020 Control Team
+## Directories
+- Ultrasonic Test by LEDs: test ultrasonic measuring function with the row of LEDs  
+- Sentry Ultrasonic Module - Modified Sumo Code: main code
 
 ## System Notes
 - 暂时用A板
@@ -54,10 +57,12 @@
 
 ## Test Code Removal Procedure
 - DMA, USART 不知道有没有用就暂时保留
-- LED row output
-    - In gpio.c, remove  
-        >HAL_GPIO_WritePin(GPIOG, LED8_Pin_o|LED7_Pin_o|LED6_Pin_o|LED5_Pin_o, GPIO_PIN_RESET);
-    - And
+- LED row output function additional code
+    - In gpio.c,
+        >HAL_GPIO_WritePin(GPIOG, LED8_Pin_o|LED7_Pin_o|LED6_Pin_o|LED5_Pin_o, GPIO_PIN_RESET);  
+
+        and  
+
         >// led row output test  
         GPIO_InitStruct.Pin = LED8_Pin_o|LED7_Pin_o|LED6_Pin_o|LED5_Pin_o;  
         GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;  
