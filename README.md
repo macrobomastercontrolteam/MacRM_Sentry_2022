@@ -5,10 +5,8 @@
 - Sentry Ultrasonic Module - Modified Sumo Code: main code
 
 ## System Notes
-- 暂时用A板
-- 左右移动只用一个M3508马达
-- 上下两个C板：上面C板控制左右运动马达，下面控制云台+拨弹轮  
-- 云台与Chassis用GM6020连接
+- Two Type A Dev Board: one controls left-right movement, one controls rotation of gimbal
+- Left-right movement motor: M2006 P36; corresponding control unit：C610
 
 ## States
 - State 0 (normal mode): go left + wiggle randomly for three times around one center point
@@ -54,6 +52,8 @@
 - usDelay
     - time (us) parameter must be within range of uint16_t (sugguestion: 1-65500)
     - used TIM4 (prescaler=APB1_freq-1 (in MHz), ARR=0xffff-1)
+- ULTRASONIC_MEASURE_RIGHT and ULTRASONIC_MEASURE_LEFT
+    - measure at most 1 meter
 
 ## Test Code Removal Procedure
 - DMA, USART 不知道有没有用就暂时保留
